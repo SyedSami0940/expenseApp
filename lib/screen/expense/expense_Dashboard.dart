@@ -24,7 +24,6 @@ class _ExpenseDashboardViewState extends State<ExpenseDashboardView> {
   @override
   void dispose() {
     _titleController.dispose();
-
     super.dispose();
   }
 
@@ -107,6 +106,96 @@ class _ExpenseDashboardViewState extends State<ExpenseDashboardView> {
     }
   }
 
+  Future<void> _editTitle(String titleId, String currentTitle) async {
+    _titleController.text = currentTitle; // Pre-fill the current title
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Title'),
+        content: TextField(
+          controller: _titleController,
+          decoration: InputDecoration(
+            hintText: 'Enter new title...',
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+          ),
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newTitle = _titleController.text.trim();
+              if (newTitle.isNotEmpty) {
+                try {
+                  await _databaseService.updateTitle(titleId, newTitle);
+                  Navigator.pop(context);
+                  _titleController.clear();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Title updated successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Failed to update title: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(ex_color.btn_botton),
+            ),
+            child: const Text(
+              'Update',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteConfirmationDialog(String titleId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Title'),
+          content: const Text('Are you sure you want to delete this item?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(); // Close the dialog
+                await _deleteTitle(titleId); // Perform delete
+              },
+              child: const Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   void _showAddTitleDialog() {
     showDialog(
       context: context,
@@ -165,48 +254,29 @@ class _ExpenseDashboardViewState extends State<ExpenseDashboardView> {
             ),
           ],
         ),
-        child: InkWell(
-          child: ListTile(
-            title: InkWell(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    title.title,
-                    style: TextStyle(
-                      color: Color(ex_color.black_clr),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 20,
-                    ),
-                  ),
-                  // Text(
-                  //   '$totalamount',
-                  //   style: TextStyle(
-                  //     color: Colors.green,
-                  //     fontWeight: FontWeight.w700,
-                  //     fontSize: 20,
-                  //   ),
-                  // ),
-                ],
-              ),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => ExpenseDetailView(),
-                  ),
-                );
-              },
+        child: ListTile(
+          title: Text(
+            title.title,
+            style: TextStyle(
+              color: Color(ex_color.black_clr),
+              fontWeight: FontWeight.w700,
+              fontSize: 20,
             ),
-            subtitle: Text(
-              DateFormat('dd-MM-yyyy h:mm a').format(title.createdOn.toDate()),
-              style: const TextStyle(fontSize: 12, color: Colors.teal),
-            ),
-            onLongPress: () => _deleteTitle(titleId),
+          ),
+          subtitle: Text(
+            DateFormat('dd-MM-yyyy h:mm a').format(title.createdOn.toDate()),
+            style: const TextStyle(fontSize: 12, color: Colors.teal),
+          ),
+          onLongPress: () => _showDeleteConfirmationDialog(titleId),
+          trailing: IconButton(
+            icon: const Icon(Icons.edit, color: Colors.blue),
+            onPressed: () =>
+                _editTitle(titleId, title.title), // Open edit dialog
           ),
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (context) => ExpenseDetailView(),
+                builder: (context) => ExpenseDetailView(titleId),
               ),
             );
           },

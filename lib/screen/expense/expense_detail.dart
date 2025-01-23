@@ -10,7 +10,8 @@ import 'package:intl/intl.dart';
 num totalamount = 0;
 
 class ExpenseDetailView extends StatefulWidget {
-  const ExpenseDetailView({super.key});
+  final parentDocId;
+  const ExpenseDetailView(this.parentDocId, {super.key});
 
   @override
   State<ExpenseDetailView> createState() => _ExpenseDetailViewState();
@@ -22,6 +23,13 @@ class _ExpenseDetailViewState extends State<ExpenseDetailView> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _dateController = TextEditingController();
   final DatabaseService _databaseService = DatabaseService();
+
+  @override
+  void initState() {
+    _databaseService.parentDocId = widget.parentDocId;
+    _databaseService.init();
+    super.initState();
+  }
 
   @override
   void dispose() {
@@ -195,7 +203,7 @@ class _ExpenseDetailViewState extends State<ExpenseDetailView> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Title deleted successfully'),
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.red,
         ),
       );
     } catch (e) {
@@ -296,8 +304,54 @@ class _ExpenseDetailViewState extends State<ExpenseDetailView> {
               ),
             ],
           ),
-          onLongPress: () => _deleteTitle(itemId),
+          onLongPress: () => _confirmDeleteTitle(itemId),
         ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteTitle(String titleId) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Confirmation'),
+        content: const Text('Are you sure you want to delete this item?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Close the dialog
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context); // Close the dialog
+              try {
+                await _databaseService.deleteTitle(titleId);
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Title deleted successfully'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Failed to delete title: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red, // Red button
+            ),
+            child: const Text(
+              'Delete',
+              style: TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
       ),
     );
   }
